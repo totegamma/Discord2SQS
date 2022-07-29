@@ -1,0 +1,54 @@
+name: 'Terraform'
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    
+
+jobs:
+  terraformCICD:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+
+    - name: install ncal package
+      run: pip3 install pynacl -t src/
+
+    - name: Configure AWS credentials from IAM Role
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Validate
+      run: terraform validate
+
+    - name: Terraform Plan
+      run: |
+        terraform plan \
+        -var discord_public_key=${{secrets.DISCORD_PUBLIC_KEY}} \
+        -var sqs_access_key=${{secrets.SQS_ACCESS_KEY}} \
+        -var sqs_secret_key=${{secrets.SQS_SECRET_KEY}} \
+        -var sqs_queue_url=${{secrets.SQS_QUEUE_URL}}
+      continue-on-error: true
+
+    - name: Terraform Apply
+      run: |
+        terraform apply -auto-approve \
+        -var discord_public_key=${{secrets.DISCORD_PUBLIC_KEY}} \
+        -var sqs_access_key=${{secrets.SQS_ACCESS_KEY}} \
+        -var sqs_secret_key=${{secrets.SQS_SECRET_KEY}} \
+        -var sqs_queue_url=${{secrets.SQS_QUEUE_URL}}
+
